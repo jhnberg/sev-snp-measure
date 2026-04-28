@@ -145,7 +145,7 @@ class VMSA(object):
     @staticmethod
     def build_save_area(eip: int, sev_features: int, vcpu_sig: int, vmm_type: VMMType = VMMType.QEMU,
                         vmm_version: VMMVersion = VMMVersion.VMM_LATEST):
-        get_vmm_version(vmm_type, vmm_version)  # Sanity check the version is valid
+        vmm_version = get_vmm_version(vmm_type, vmm_version)  # Sanity check the version is valid
         # QEMU, EC2, and GCE differ slightly on initial register state
         g_pat = 0x7040600070406  # PAT MSR: See AMD APM Vol 2, Section A.3
         if vmm_type == VMMType.QEMU:
@@ -161,7 +161,9 @@ class VMSA(object):
                 cs_flags = 0x9a
             ss_flags = 0x92
             tr_flags = 0x83
-            rdx = 0
+            rdx = 0x600
+            if vmm_version == VMMVersion.VMM_V1:
+                rdx = 0x0
             mxcsr = 0
             fcw = 0
         elif vmm_type == VMMType.gce:

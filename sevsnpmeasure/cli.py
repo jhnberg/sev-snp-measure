@@ -50,6 +50,7 @@ def get_vmm_ver(parser, args):
         return vmm_types.VMMVersion.VMM_LATEST
     vmm_versions = {
             1: vmm_types.VMMVersion.VMM_V1,
+            2: vmm_types.VMMVersion.VMM_V2,
     }
     return vmm_versions[args.vmm_version]
 
