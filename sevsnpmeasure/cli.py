@@ -45,6 +45,15 @@ def get_vcpu_sig(parser, args, vmm_type):
         parser.error(f"missing --vcpu-type or --vcpu-sig or --vcpu-family in guest mode '{args.mode}'")
 
 
+def get_vmm_ver(parser, args):
+    if args.vmm_version is None:
+        return vmm_types.VMMVersion.VMM_LATEST
+    vmm_versions = {
+            1: vmm_types.VMMVersion.VMM_V1,
+    }
+    return vmm_versions[args.vmm_version]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog='sev-snp-measure',
                                      description='Calculate AMD SEV/SEV-ES/SEV-SNP guest launch measurement')
@@ -62,6 +71,7 @@ def main() -> int:
     parser.add_argument('--vcpu-stepping', metavar='STEPPING', type=int, help='Guest vcpu stepping', default=None)
     parser.add_argument('--vmm-type', metavar='VMMTYPE', type=str,
                         help=f"Type of guest vmm ({', '.join(vmm_types.VMMType.__members__.keys())})", default='QEMU')
+    parser.add_argument('--vmm-version', metavar='VMMVERSION', type=int, help='The version of the VMM', default=None)
     parser.add_argument('--ovmf', metavar='PATH',
                         help='OVMF file to calculate hash from', required=True)
     parser.add_argument('--kernel', metavar='PATH',
@@ -110,6 +120,7 @@ def main() -> int:
         parser.error(f"unknown VMM type '{args.vmm_type}'")
 
     vcpu_sig = get_vcpu_sig(parser, args, vmm_type)
+    vmm_ver = get_vmm_ver(parser, args)
 
     try:
         vars_size = 0
@@ -129,7 +140,7 @@ def main() -> int:
 
         ld = guest.calc_launch_digest(sev_mode, args.vcpus, vcpu_sig, args.ovmf, args.kernel, args.initrd, args.append,
                                       args.guest_features, args.snp_ovmf_hash, vmm_type, args.dump_vmsa,
-                                      args.svsm, vars_size)
+                                      args.svsm, vars_size, vmm_version=vmm_ver)
 
         print_measurement(ld, sev_mode, args.output_format, args.verbose)
     except RuntimeError as e:

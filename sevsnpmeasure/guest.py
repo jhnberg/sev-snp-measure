@@ -12,7 +12,7 @@ from .ovmf import OVMF, SectionType, OvmfSevMetadataSectionDesc, SVSM
 from .sev_hashes import SevHashes
 from .vmsa import VMSA, VMSA_SVSM
 from .sev_mode import SevMode
-from .vmm_types import VMMType
+from .vmm_types import VMMType, VMMVersion
 
 PAGE_MASK = 0xfff
 
@@ -20,13 +20,13 @@ PAGE_MASK = 0xfff
 def calc_launch_digest(mode: SevMode, vcpus: int, vcpu_sig: int, ovmf_file: str,
                        kernel: str, initrd: str, append: str, guest_features: int, snp_ovmf_hash_str: str = '',
                        vmm_type: VMMType = VMMType.QEMU, dump_vmsa: bool = False, svsm_file: str = '',
-                       ovmf_vars_size: int = 0) -> bytes:
+                       ovmf_vars_size: int = 0, vmm_version: VMMVersion = VMMVersion.VMM_LATEST) -> bytes:
     if snp_ovmf_hash_str and mode != SevMode.SEV_SNP:
         raise ValueError("SNP OVMF hash only works with SNP")
 
     if mode == SevMode.SEV_SNP:
         return snp_calc_launch_digest(vcpus, vcpu_sig, ovmf_file, kernel, initrd, append, guest_features,
-                                      snp_ovmf_hash_str, vmm_type, dump_vmsa=dump_vmsa)
+                                      snp_ovmf_hash_str, vmm_type, dump_vmsa=dump_vmsa, vmm_version=vmm_version)
     elif mode == SevMode.SEV_ES:
         return seves_calc_launch_digest(vcpus, vcpu_sig, ovmf_file, kernel, initrd, append,
                                         vmm_type=vmm_type, dump_vmsa=dump_vmsa)
@@ -94,7 +94,8 @@ def calc_snp_ovmf_hash(ovmf_file: str) -> bytes:
 
 def snp_calc_launch_digest(vcpus: int, vcpu_sig: int, ovmf_file: str,
                            kernel: str, initrd: str, append: str, guest_features: int,
-                           ovmf_hash_str: str, vmm_type: VMMType = VMMType.QEMU, dump_vmsa: bool = False) -> bytes:
+                           ovmf_hash_str: str, vmm_type: VMMType = VMMType.QEMU, dump_vmsa: bool = False,
+                           vmm_version: VMMVersion = VMMVersion.VMM_LATEST) -> bytes:
 
     gctx = GCTX()
     ovmf = OVMF(ovmf_file)
@@ -113,7 +114,7 @@ def snp_calc_launch_digest(vcpus: int, vcpu_sig: int, ovmf_file: str,
 
     snp_update_metadata_pages(gctx, ovmf, sev_hashes, vmm_type)
 
-    vmsa = VMSA(SevMode.SEV_SNP, ovmf.sev_es_reset_eip(), vcpu_sig, guest_features, vmm_type)
+    vmsa = VMSA(SevMode.SEV_SNP, ovmf.sev_es_reset_eip(), vcpu_sig, guest_features, vmm_type, vmm_version)
     for i, vmsa_page in enumerate(vmsa.pages(vcpus)):
         gctx.update_vmsa_page(vmsa_page)
         if dump_vmsa:

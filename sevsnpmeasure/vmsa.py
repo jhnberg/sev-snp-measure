@@ -7,7 +7,7 @@ import ctypes
 from ctypes import c_uint8, c_uint16, c_uint32, c_uint64
 from typing import Iterator
 from .sev_mode import SevMode
-from .vmm_types import VMMType
+from .vmm_types import VMMType, VMMVersion, get_vmm_version
 
 
 # VMCB Segment (struct vmcb_seg in the linux kernel)
@@ -143,7 +143,9 @@ class VMSA(object):
     BSP_EIP = 0xfffffff0
 
     @staticmethod
-    def build_save_area(eip: int, sev_features: int, vcpu_sig: int, vmm_type: VMMType = VMMType.QEMU):
+    def build_save_area(eip: int, sev_features: int, vcpu_sig: int, vmm_type: VMMType = VMMType.QEMU,
+                        vmm_version: VMMVersion = VMMVersion.VMM_LATEST):
+        get_vmm_version(vmm_type, vmm_version)  # Sanity check the version is valid
         # QEMU, EC2, and GCE differ slightly on initial register state
         g_pat = 0x7040600070406  # PAT MSR: See AMD APM Vol 2, Section A.3
         if vmm_type == VMMType.QEMU:
@@ -200,8 +202,8 @@ class VMSA(object):
         )
 
     def __init__(self, sev_mode: SevMode, ap_eip: int, vcpu_sig: int, guest_features: int,
-                 vmm_type: VMMType = VMMType.QEMU):
-        self.bsp_save_area = VMSA.build_save_area(self.BSP_EIP, guest_features, vcpu_sig, vmm_type)
+                 vmm_type: VMMType = VMMType.QEMU, vmm_version: VMMVersion = VMMVersion.VMM_LATEST):
+        self.bsp_save_area = VMSA.build_save_area(self.BSP_EIP, guest_features, vcpu_sig, vmm_type, vmm_version)
         if ap_eip:
             self.ap_save_area = VMSA.build_save_area(ap_eip, guest_features, vcpu_sig, vmm_type)
 
